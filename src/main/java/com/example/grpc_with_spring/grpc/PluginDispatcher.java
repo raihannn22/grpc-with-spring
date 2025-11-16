@@ -8,7 +8,9 @@ import com.example.grpc_with_spring.grpc.util.SignatureUtil;
 import coprocess.CoprocessObject;
 import coprocess.DispatcherGrpc;
 
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
+import java.util.Date;
 
 public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
     private final SecretService secretService;
@@ -20,7 +22,7 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
     @Override
     public void dispatch(CoprocessObject.Object request, io.grpc.stub.StreamObserver<CoprocessObject.Object> responseObserver) {
         CoprocessObject.Object modifiedReq = null;
-        System.out.println("Request Received : " );
+        System.out.println("Request Received : " + Timestamp.valueOf(OffsetDateTime.now().toLocalDateTime()));
 
         switch (request.getHookName()){
             case "MyPreMiddleware":
