@@ -46,6 +46,7 @@ public class SignatureUtil {
     public String generateServiceSignature(String clientSecret, String method, String url, String authToken, String isoTime, String body) throws Exception {
         String hexEncode = hash256(body);
         String stringToSign = method + ":" + url + ":" + authToken + ":" + hexEncode + ":" + isoTime;
+        System.out.println("ini string to sign ->" + stringToSign);
 
         return Base64.getEncoder().encodeToString(calculateHMACSHA512(stringToSign, clientSecret));
         //return toHexString(calculateHMACSHA512(stringToSign, clientSecret));
