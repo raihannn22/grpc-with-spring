@@ -222,6 +222,109 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
 
     CoprocessObject.Object OutboundTransaction(CoprocessObject.Object request){
         CoprocessObject.Object.Builder builder = request.toBuilder();
+
+        String clientKey = request.getRequest().getHeadersOrDefault("Client-Key","");
+        String timestamp = request.getRequest().getHeadersOrDefault("Timestamp",String.valueOf(OffsetDateTime.now()));
+        String signature = request.getRequest().getHeadersOrDefault("Signature","");
+        String auth = request.getRequest().getHeadersOrDefault("Authorization","");
+        String token = "";
+        if (auth.length() > 7){
+            token = auth.substring(7);
+        }
+
+        String httpMethod =request.getRequest().getMethod();
+        String relativeUrl = "/test/satu";
+        String body = request.getRequest().getBody();
+
+        Gson gson = new Gson();
+        JsonParser parser = new JsonParser();
+        JsonElement jsonElement = parser.parse(body);
+        body = gson.toJson(jsonElement);
+
+        ResponseDto response = new ResponseDto();
+        try{
+            if (clientKey.equals("")){
+                System.out.println("client key is empty");
+                ResponseMaker.missingMandatoryResponse(builder,response,"Client-Key");
+                return builder.build();
+            }
+            if (signature.equals("")){
+                System.out.println("signature is empty");
+                ResponseMaker.missingMandatoryResponse(builder,response,"Signature");
+                return builder.build();
+            }
+            if (timestamp.equals("")){
+                System.out.println("timestamp is empty");
+                ResponseMaker.missingMandatoryResponse(builder,response,"Timestamp");
+                return builder.build();
+            }
+            if (token.equals("")){
+                System.out.println("token is empty;");
+                try{
+                    SignatureUtil signatureUtil = new SignatureUtil();
+                    String signatureStr = signatureUtil.generateOauthSignature(privateKey,clientKey,timestamp);
+
+                    token = secretService.callGenerateToken(clientKey,signatureStr,timestamp);
+                    System.out.println("token -> " + token);
+                }
+                catch (Exception ex){
+                    System.out.println("Exception 3 -> " + ex.getMessage());
+                }
+//                ResponseMaker.missingMandatoryResponse(builder, response, "Authorization token is missing");
+            }
+
+            SecretEntity secretEntities = secretService.getByClientKey(clientKey);
+            if (secretEntities == null){
+                System.out.println("client key not found");
+                ResponseMaker.unauthorizedResponse(builder,response,"Client key not found");
+                return builder.build();
+            }
+            String secretKey = secretEntities.getClientSecret();
+            if(secretKey == null ){
+                System.out.println("client key not found");
+                ResponseMaker.unauthorizedResponse(builder,response,"Client key not found");
+                return builder.build();
+            }
+
+            try{
+                JWTUtil jwtUtil = new JWTUtil(privateKey);
+                if(!jwtUtil.validateTokenJWT(token).equals(clientKey)){
+                    System.out.println("token not valid");
+                    ResponseMaker.unauthorizedResponse(builder,response,"Token not valid");
+                    return builder.build();
+                }
+
+                if(jwtUtil.validateTokenJWT(token).equals("expire")){
+                    System.out.println("token expired");
+                    ResponseMaker.invalidTokenResponse(builder,response);
+                    return builder.build();
+                }
+            }
+            catch (Exception e){
+                ResponseMaker.internalErrorResponse(builder,response);
+                System.out.println("Exception 2 -> " + e.getMessage());
+                return builder.build();
+            }
+
+            SignatureUtil signatureUtil = new SignatureUtil();
+            String signatureStr = signatureUtil.generateServiceSignature(secretKey,httpMethod,relativeUrl,token,timestamp,body);
+            System.out.println("ini signature -> " + signatureStr);
+            builder.getRequestBuilder().putSetHeaders("X-SIGNATURE",signatureStr);
+            builder.getRequestBuilder().putSetHeaders("X-TIMESTAMP",timestamp);
+
+
+
+        }catch (Exception e){
+            System.out.println("Exception 1 -> " + e.getMessage());
+            try{
+                ResponseMaker.internalErrorResponse(builder,response);
+            }
+            catch (Exception ex){
+                ex.printStackTrace();
+            }
+            return builder.build();
+        }
+
         return builder.build();
     }
 }
