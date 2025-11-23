@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.Date;
+import java.util.Map;
 
 public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
     private final SecretService secretService;
@@ -123,9 +124,10 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
     }
 
     CoprocessObject.Object InboundTransaction(CoprocessObject.Object request){
+        System.out.println("InboundTransaction");
         CoprocessObject.Object.Builder builder = request.toBuilder();
 
-        String clientKey = request.getRequest().getHeadersOrDefault("Client-Key","");
+        String  clientKey = request.getRequest().getHeadersOrDefault("Client-Key","");
         String Timestamp = request.getRequest().getHeadersOrDefault("Timestamp",String.valueOf(OffsetDateTime.now()));
         String signature = request.getRequest().getHeadersOrDefault("Signature","");
         String auth = request.getRequest().getHeadersOrDefault("Authorization","");
@@ -221,6 +223,7 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
     }
 
     CoprocessObject.Object OutboundTransaction(CoprocessObject.Object request){
+        System.out.println("OutboundTransaction");
         CoprocessObject.Object.Builder builder = request.toBuilder();
 
         String clientKey = request.getRequest().getHeadersOrDefault("Client-Key","");
@@ -309,8 +312,9 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
             SignatureUtil signatureUtil = new SignatureUtil();
             String signatureStr = signatureUtil.generateServiceSignature(secretKey,httpMethod,relativeUrl,token,timestamp,body);
             System.out.println("ini signature -> " + signatureStr);
-            builder.getRequestBuilder().putSetHeaders("X-SIGNATURE",signatureStr);
-            builder.getRequestBuilder().putSetHeaders("X-TIMESTAMP",timestamp);
+            builder.getRequestBuilder().putSetHeaders("Signature",signatureStr);
+            builder.getRequestBuilder().putSetHeaders("Timestamp",timestamp);
+            builder.getRequestBuilder().putSetHeaders("Authorization",token);
 
 
 
