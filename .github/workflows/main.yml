@@ -1,0 +1,33 @@
+name: Build and Deploy grpc-spring
+
+on:
+  push:
+    branches: [ "main" ]   # ganti kalau branch utamamu beda
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted    # karena kamu pakai self-hosted runner
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn -B clean package -DskipTests
+
+      - name: Copy JAR to deploy folder
+        run: |
+          JAR_FILE=$(ls target/*.jar | head -n 1)
+          echo "Using jar: $JAR_FILE"
+          sudo cp "$JAR_FILE" /opt/app/grpc-spring/grpc-with-spring-0.0.1-SNAPSHOT.jar
+
+      - name: Restart grpc-spring service
+        run: |
+          sudo systemctl restart grpc-spring
+          sudo systemctl status grpc-spring --no-pager --lines 20 || true
