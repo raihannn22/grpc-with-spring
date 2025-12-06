@@ -314,6 +314,8 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
             System.out.println("ini signature -> " + signatureStr);
             builder.getRequestBuilder().putSetHeaders("Signature",signatureStr);
             builder.getRequestBuilder().putSetHeaders("Timestamp",timestamp);
+            token = "Bearer " + token;
+            System.out.println("ini token -> " + token);
             builder.getRequestBuilder().putSetHeaders("Authorization",token);
 
 
