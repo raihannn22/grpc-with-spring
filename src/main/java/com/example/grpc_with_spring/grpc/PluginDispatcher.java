@@ -8,13 +8,18 @@ import com.example.grpc_with_spring.grpc.util.ResponseMaker;
 import com.example.grpc_with_spring.grpc.util.SignatureUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.type.DateTime;
 import coprocess.CoprocessObject;
 import coprocess.DispatcherGrpc;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.Map;
 
@@ -236,7 +241,8 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
         }
 
         String httpMethod =request.getRequest().getMethod();
-        String relativeUrl = "/test/satu";
+//        String relativeUrl = "/test/satu";
+        String relativeUrl = request.getRequest().getHeadersOrDefault("Relative-Url","");
         String body = request.getRequest().getBody();
 
         Gson gson = new Gson();
@@ -251,11 +257,11 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
                 ResponseMaker.missingMandatoryResponse(builder,response,"Client-Key");
                 return builder.build();
             }
-            if (signature.equals("")){
-                System.out.println("signature is empty");
-                ResponseMaker.missingMandatoryResponse(builder,response,"Signature");
-                return builder.build();
-            }
+//            if (signature.equals("")){
+//                System.out.println("signature is empty");
+//                ResponseMaker.missingMandatoryResponse(builder,response,"Signature");
+//                return builder.build();
+//            }
             if (timestamp.equals("")){
                 System.out.println("timestamp is empty");
                 ResponseMaker.missingMandatoryResponse(builder,response,"Timestamp");
@@ -334,5 +340,55 @@ public class PluginDispatcher extends DispatcherGrpc.DispatcherImplBase {
         }
 
         return builder.build();
+    }
+
+    private boolean timeFormatValidation(String isoTime){
+        try{
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+        format.parse(isoTime);
+        return true;
+        }
+        catch(DateTimeParseException e){
+            return false;
+        }
+    }
+
+    private boolean timeExpirationValidation(String isoTime){
+        try{
+            DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+            OffsetDateTime timeInput = OffsetDateTime.parse(isoTime,format);
+
+            OffsetDateTime timeNow = OffsetDateTime.now();
+
+            OffsetDateTime timeMax = timeInput.plusMinutes(60);
+            OffsetDateTime timeMin = timeInput.minusMinutes(60);
+
+            if (timeNow.isBefore(timeMin) || timeNow.isAfter(timeMax)){
+                return false;
+            }
+
+            return true;
+        }
+        catch(DateTimeParseException e){
+            return false;
+        }
+    }
+
+    private String getIsoTimeNow (){
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX").format(new Date());
+    }
+
+    private boolean bodyValidation(String body){
+        try{
+            JsonObject jsonObject = new JsonObject();
+            String grandType = jsonObject.get(body).getAsJsonObject().get("grandType").getAsString();
+
+
+
+            return true;
+        }
+        catch (Exception e){
+            return false;
+        }
     }
 }
